@@ -1,0 +1,29 @@
+server:
+  port: 4141
+logging:
+  level:
+    '[org.springframework.web.servlet]': TRACE
+spring:
+  cloud:
+    gateway:
+      mvc:
+        routes:
+        - id: redirectto_route
+          uri: https://onlineislemler.kamusm.gov.tr # burasi kullanilmiyor fakat, kaldirildiginda da hata veriyor
+          predicates:
+          - Path=/kamusm
+          filters:
+          - RedirectTo=302, https://onlineislemler.kamusm.gov.tr
+
+
+# COPILOT ANSWER:
+# The `uri` property is actually required in Spring Cloud Gateway route configuration - it's a mandatory field even if you're using RedirectTo filter. Here's why:
+
+# 1. **Architectural Requirement**: 
+#    - SCG's core routing mechanism requires a destination URI
+#    - The route definition won't be valid without it
+
+# 2. **Best Practice Solution**:
+#    - Use a dummy but valid URI when using RedirectTo
+#    - Or use the actual target URI for better code readability
+

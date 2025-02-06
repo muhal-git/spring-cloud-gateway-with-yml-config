@@ -1,0 +1,46 @@
+server:
+  port: 4141
+logging:
+  level:
+    '[org.springframework.web.servlet]': TRACE
+spring:
+  cloud:
+    gateway:
+      mvc:
+        routes:
+        # /kamusm adresine gelen istekleri https://onlineislemler.kamusm.gov.tr adresine yonlendirir
+        - id: redirectto_route
+          uri: https://onlineislemler.kamusm.gov.tr # burasi kullanilmiyor fakat, kaldirildiginda da hata veriyor
+          predicates:
+          - Path=/kamusm
+          filters:
+          - RedirectTo=302, https://onlineislemler.kamusm.gov.tr
+        # /add-header adresine gelen isteklerin header'larina Custom-Header-Key: Custom-Header-Value ekler
+        # ve Custom-Header-Key2: Custom-Header-Value2 ekler. Ayrıca StripPrefix=1 ile /add-header kısmını siler.
+        # Eger StripPrefix=1 yazmazsak, /add-header pathini da uri'ye ekler o sekilde yonlendirir.
+        # Gordugunuz gibi filters kisminda birden fazla filtre tanimlayabiliriz.
+        # https://pipedream.com/requestbin adresinden URL olusturup, oraya gelen istekleri gormek icin kullanabiliriz.
+        - id: add_request_header_route
+          uri: https://eo1in2jip2w6gv9.m.pipedream.net
+          predicates:
+          - Path=/add-header
+          filters:
+          - StripPrefix=1
+          - AddRequestHeader=X-Request-Custom-Header-Key, Custom-Header-Value
+          - AddRequestHeader=X-Request-Custom-Header-Key2, Custom-Header-Value2
+        # /add-parameter adresine gelen isteklerin query parametrelerine X-Request-Custom-Parameter-Key: Custom-Parameter-Value ekler.
+        - id: add_request_parameter_route
+          uri: https://eo1in2jip2w6gv9.m.pipedream.net
+          predicates:
+          - Path=/add-parameter
+          filters:
+          - AddRequestParameter=X-Request-Custom-Parameter-Key, Custom-Parameter-Value
+        # /add-response-header adresine gelen isteklerin response header'larina X-Response-Custom-Header-Key: Custom-Header-Value ekler.
+        # postman ile istek yaparak, response header'larini gorebiliriz.
+        - id: add_response_header_route
+          uri: https://jsonplaceholder.typicode.com/todos/10
+          predicates:
+          - Path=/add-response-header
+          filters:
+          - StripPrefix=1
+          - AddResponseHeader=X-Response-Custom-Header-Key, Custom-Header-Value
