@@ -8,6 +8,7 @@ spring:
     gateway:
       mvc:
         routes:
+        # Basic routing
         # /kamusm adresine gelen istekleri https://onlineislemler.kamusm.gov.tr adresine yonlendirir
         - id: redirectto_route
           uri: https://onlineislemler.kamusm.gov.tr # burasi kullanilmiyor fakat, kaldirildiginda da hata veriyor
@@ -40,7 +41,6 @@ spring:
         - id: add_response_header_route
           uri: https://jsonplaceholder.typicode.com/todos/10
           predicates:
-          - Path=/add-response-header
+          - Path=/todos/10
           filters:
-          - StripPrefix=1
           - AddResponseHeader=X-Response-Custom-Header-Key, Custom-Header-Value
