@@ -1,0 +1,104 @@
+server:
+  port: 4141
+logging:
+  level:
+    "[reactor.metty.http.client]": ERROR
+    "[reactor.netty]": ERROR
+    "[org.springframework]": ERROR
+spring:
+  cloud:
+    gateway:
+      filter:
+        # To enable this feature, add com.github.ben-manes.caffeine:caffeine and spring-boot-starter-cache as project dependencies.
+        local-response-cache: # local response cache filtresi, isteklerin cevaplarini cache'ler.
+          enabled: true # filtre aktif, false yaparsak cache'leme islemi yapmaz.
+          # This filter also automatically calculates the max-age value in the HTTP Cache-Control header. 
+          # Only if max-age is present on the original response is the value rewritten with the number of seconds
+          # set in the timeToLive configuration parameter. In consecutive calls, this value is recalculated
+          # with the number of seconds left until the response expires.
+          time-to-live: 10s # cache'de tutulacak cevaplarin suresi, s for seconds, m for minutes, and h for hours.
+          size: 100MB # cache boyutu, KB, MB, or GB ile belirtilebilir.
+      routes:
+        # /kamusm adresine gelen istekleri https://onlineislemler.kamusm.gov.tr adresine yonlendirir
+        - id: redirectto_route
+          uri: https://onlineislemler.kamusm.gov.tr # burasi kullanilmiyor fakat, kaldirildiginda da hata veriyor
+          predicates:
+            - Path=/kamusm
+          filters:
+            - RedirectTo=302, https://onlineislemler.kamusm.gov.tr
+        #
+        # /add-header adresine gelen isteklerin header'larina Custom-Header-Key: Custom-Header-Value ekler
+        # ve Custom-Header-Key2: Custom-Header-Value2 ekler. Ayrıca StripPrefix=1 ile /add-header kısmını siler.
+        # Eger StripPrefix=1 yazmazsak, /add-header pathini da uri'ye ekler o sekilde yonlendirir.
+        # Gordugunuz gibi filters kisminda birden fazla filtre tanimlayabiliriz.
+        # https://pipedream.com/requestbin adresinden URL olusturup, oraya gelen istekleri gormek icin kullanabiliriz.
+        - id: add_request_header_route
+          uri: https://eo1in2jip2w6gv9.m.pipedream.net
+          predicates:
+            - Path=/add-header
+          filters:
+            - StripPrefix=1 # /add-header kismini siler.
+            - AddRequestHeader=X-Request-Custom-Header-Key, Custom-Header-Value
+            - AddRequestHeader=X-Request-Custom-Header-Key2, Custom-Header-Value2
+        # /add-parameter adresine gelen isteklerin query parametrelerine X-Request-Custom-Parameter-Key: Custom-Parameter-Value ekler.
+        - id: add_request_parameter_route
+          uri: https://eo1in2jip2w6gv9.m.pipedream.net
+          predicates:
+            - Path=/add-parameter
+          filters:
+            - AddRequestParameter=X-Request-Custom-Parameter-Key, Custom-Parameter-Value
+        # /add-response-header adresine gelen isteklerin response header'larina X-Response-Custom-Header-Key: Custom-Header-Value ekler.
+        # postman ile istek yaparak, response header'larini gorebiliriz.
+        - id: add_response_header_route
+          uri: https://jsonplaceholder.typicode.com/
+          predicates:
+            - Path=/todos/10
+          filters:
+            - AddResponseHeader=X-Response-Custom-Header-Key, Custom-Header-Value
+        # /add-prefix adresine gelen isteklerin /prefix kismini siler ve https://jsonplaceholder.typicode.com/todos/10 adresine yonlendirir.
+        - id: add_prefix_route
+          uri: https://eoghw5f70nu46ce.m.pipedream.net
+          predicates:
+            - Path=/prefix
+          filters:
+            - StripPrefix=1 # /prefix kismini sil
+            - PrefixPath=/todos/10 # ve https://jsonplaceholder.typicode.com/todos/10 adresine yognlendir.
+        # /get adresine gelen isteklerin Host header'ini korur ve https://httpbin.org/get adresine yonlendirir.
+        - id: preserve_host_route
+          uri: https://httpbin.org
+          predicates:
+            - Path=/get
+          filters:
+            - PreserveHostHeader
+        # /cookies adresine gelen isteklerin header boyutunu kontrol eder ve RequestHeaderSize byte'dan buyukse hata 431 doner.
+        - id: request_header_size_route
+          uri: https://httpbin.org
+          predicates:
+            - Path=/cookies
+          filters:
+            - RequestHeaderSize=10
+        # tarih filtresi ile /after/todos adresine gelen isteklerin sadece After parametresi ile belirtilen tarihten sonra olan istekleri kabul eder.
+        - id: after_route
+          uri: https://jsonplaceholder.typicode.com
+          predicates:
+            - Path=/after/todos
+            - After=2021-01-01T00:00:00Z
+          filters:
+            - StripPrefix=1
+        - id: route_1
+          uri: https://scg-test.free.beeceptor.com
+          predicates:
+            - Path=/cache-test
+        - id: circuitbreaker_route
+          uri: https://eo1in2jip2w6gv9.m.pipegdream.net
+          predicates:
+            - Path=/circuit-breaker
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: myCircuitBreaker
+                fallbackUri: forward:/fallback
+        - id: fallback_route   # added fallback route for CircuitBreaker
+          uri: forward:/after/todos
+          predicates:
+            - Path=/fallback
