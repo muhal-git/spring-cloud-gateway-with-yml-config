@@ -93,6 +93,14 @@
             <scope>test</scope>
         </dependency>
 
+        <!--
+            Starter for using Redis key-value data store with Spring Data Redis reactive and the Lettuce client
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+        </dependency>
+
     </dependencies>
     <dependencyManagement>
         <dependencies>

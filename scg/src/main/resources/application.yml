@@ -1,24 +1,36 @@
 # https://www.baeldung.com/spring-cloud-gateway-webfilter-factories
 server:
-  port: 4141
+  port: 4140
 logging:
   level:
     "[reactor.metty.http.client]": ERROR
     "[reactor.netty]": ERROR
     "[org.springframework]": ERROR
 spring:
+  data:
+    redis:
+      url: redis://localhost:6379
   cloud:
     gateway:
       filter:
-        # To enable this feature, add com.github.ben-manes.caffeine:caffeine and spring-boot-starter-cache as project dependencies.
-        local-response-cache: # local response cache filtresi, isteklerin cevaplarini cache'ler.
-          enabled: true # filtre aktif, false yaparsak cache'leme islemi yapmaz.
-          # This filter also automatically calculates the max-age value in the HTTP Cache-Control header. 
-          # Only if max-age is present on the original response is the value rewritten with the number of seconds
-          # set in the timeToLive configuration parameter. In consecutive calls, this value is recalculated
-          # with the number of seconds left until the response expires.
-          time-to-live: 10s # cache'de tutulacak cevaplarin suresi, s for seconds, m for minutes, and h for hours.
-          size: 100MB # cache boyutu, KB, MB, or GB ile belirtilebilir.
+          # To enable this feature, add com.github.ben-manes.caffeine:caffeine and spring-boot-starter-cache as project dependencies.
+          local-response-cache: # local response cache filtresi, isteklerin cevaplarini cache'ler.
+            enabled: true # filtre aktif, false yaparsak cache'leme islemi yapmaz.
+            # This filter also automatically calculates the max-age value in the HTTP Cache-Control header. 
+            # Only if max-age is present on the original response is the value rewritten with the number of seconds
+            # set in the timeToLive configuration parameter. In consecutive calls, this value is recalculated
+            # with the number of seconds left until the response expires.
+            time-to-live: 10s # cache'de tutulacak cevaplarin suresi, s for seconds, m for minutes, and h for hours.
+            size: 100MB # cache boyutu, KB, MB, or GB ile belirtilebilir.
+      default-filters:
+        # default rate limiter, tüm route'lar için geçerli
+        # redis.url.port belirtilmez ise default olarak localhost ve 6379 portunu kullanir.
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter:
+              replenishRate: 1
+              burstCapacity: 100
+              requestedTokens: 100
       routes:
         # /kamusm adresine gelen istekleri https://onlineislemler.kamusm.gov.tr adresine yonlendirir
         - id: redirectto_route
@@ -27,6 +39,12 @@ spring:
             - Path=/kamusm
           filters:
             - RedirectTo=302, https://onlineislemler.kamusm.gov.tr
+            - name: RequestRateLimiter # bu route icin rate limiter tanimlamasi, default rate limiter'i override eder.
+              args:
+                redis-rate-limiter:
+                  replenishRate: 10
+                  burstCapacity: 100
+                  requestedTokens: 50
         #
         # /add-header adresine gelen isteklerin header'larina Custom-Header-Key: Custom-Header-Value ekler
         # ve Custom-Header-Key2: Custom-Header-Value2 ekler. Ayrıca StripPrefix=1 ile /add-header kısmını siler.
@@ -86,10 +104,10 @@ spring:
             - After=2021-01-01T00:00:00Z
           filters:
             - StripPrefix=1
-        - id: route_1
+        - id: routing
           uri: https://scg-test.free.beeceptor.com
           predicates:
-            - Path=/cache-test
+            - Path=/test
         - id: circuitbreaker_route
           uri: https://eo1in2jip2w6gv9.m.pipegdream.net
           predicates:
